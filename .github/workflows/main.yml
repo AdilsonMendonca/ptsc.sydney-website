@@ -25,4 +25,4 @@ jobs:
           
         run: |
           aws s3 sync . s3://ptsc.sydney/
-
+          aws s3 sync . s3://www.ptsc.sydney/
