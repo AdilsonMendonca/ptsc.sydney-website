@@ -24,5 +24,7 @@ jobs:
           AWS_REGION: ${{ secrets.AWS_REGION }}
           
         run: |
+          rm -Rf .git
+          rm -Rf .githut
           aws s3 sync . s3://ptsc.sydney/
           aws s3 sync . s3://www.ptsc.sydney/
