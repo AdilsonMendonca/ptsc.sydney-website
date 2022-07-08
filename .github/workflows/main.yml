@@ -22,9 +22,32 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_REGION: ${{ secrets.AWS_REGION }}
+          CLOUDFRONT_DISTRIBUTION_ID: ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}
           
         run: |
           rm -Rf .git
           rm -Rf .githut
           aws s3 sync . s3://ptsc.sydney/
           aws s3 sync . s3://www.ptsc.sydney/
+          echo "Invalidating CloudFront (CDN)"
+          INV_ID=$(aws cloudfront create-invalidation --distribution-id ${CLOUDFRONT_DISTRIBUTION_ID} --paths / | jq --raw-output '.Invalidation.Id')
+          COUNT=0
+          while [ ${COUNT} -le 20 ]
+          do
+            INV_STATUS=$(aws cloudfront get-invalidation --distribution-id ${CLOUDFRONT_DISTRIBUTION_ID} --id ${INV_ID} | jq  --raw-output '.Invalidation.Status')
+            if [[ ! -z $(echo "${INV_STATUS}" | grep "NoSuchInvalidation") ||  -z ${INV_STATUS} ]]
+            then
+              echo "Invalid ID ==> ${INV_STATUS}"
+              return 2
+            fi
+
+            if [[ "${INV_STATUS}" == "Completed" ]]
+            then
+               return 0
+            fi
+            sleep 5
+            echo "  ... sleeping"
+            COUNT=$((${COUNT}+1))
+          done
+          echo "[WARNING] Invalidation took too long over 100 seconds"
+          return 5
