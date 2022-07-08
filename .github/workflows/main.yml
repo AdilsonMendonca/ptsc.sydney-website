@@ -30,6 +30,7 @@ jobs:
           aws s3 sync . s3://ptsc.sydney/
           aws s3 sync . s3://www.ptsc.sydney/
           echo "Invalidating CloudFront (CDN)"
+
           INV_ID=$(aws cloudfront create-invalidation --distribution-id ${CLOUDFRONT_DISTRIBUTION_ID} --paths / | jq --raw-output '.Invalidation.Id')
           COUNT=0
           while [ ${COUNT} -le 20 ]
@@ -38,16 +39,18 @@ jobs:
             if [[ ! -z $(echo "${INV_STATUS}" | grep "NoSuchInvalidation") ||  -z ${INV_STATUS} ]]
             then
               echo "Invalid ID ==> ${INV_STATUS}"
-              return 2
+              exit 2
             fi
 
             if [[ "${INV_STATUS}" == "Completed" ]]
             then
-               return 0
+               exit 0
             fi
             sleep 5
             echo "  ... sleeping"
             COUNT=$((${COUNT}+1))
           done
           echo "[WARNING] Invalidation took too long over 100 seconds"
-          return 5
+          exit 5
+
+
